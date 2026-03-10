@@ -472,5 +472,222 @@
     }, 40);
   }
 </script>
+
+<!-- VERIFIED PREDICTIONS SECTION -->
+<style>
+  .predictions-section { margin-top: 60px; padding-top: 40px; border-top: 1px solid #0f1923; }
+  .predictions-title-row { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+  .predictions-desc { font-size: 11px; color: #9ca3af; line-height: 1.8; margin-bottom: 28px; }
+
+  .pred-card { background: #0d1117; border: 1px solid #0f1923; border-radius: 6px; overflow: hidden; margin-bottom: 12px; transition: border-color 0.2s; }
+  .pred-card:hover { border-color: #1f2937; }
+
+  .pred-summary { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; cursor: pointer; user-select: none; gap: 12px; }
+  .pred-left { display: flex; flex-direction: column; gap: 2px; }
+  .pred-artist { font-family: 'Bebas Neue', sans-serif; font-size: 16px; letter-spacing: 0.08em; color: #f9fafb; }
+  .pred-album { font-family: 'Space Mono', monospace; font-size: 9px; color: #6b7280; }
+
+  .pred-numbers { display: flex; align-items: center; gap: 20px; }
+  .pred-num-block { text-align: right; }
+  .pred-num-label { font-family: 'Bebas Neue', sans-serif; font-size: 8px; letter-spacing: 0.15em; color: #4b5563; margin-bottom: 2px; }
+  .pred-num-val { font-family: 'Space Mono', monospace; font-size: 14px; font-weight: 700; }
+  .pred-num-val.amber { color: #fbbf24; }
+  .pred-num-val.green { color: #22c55e; }
+
+  .pred-arrow { font-size: 16px; color: #374151; transition: transform 0.3s; flex-shrink: 0; }
+  .pred-card.open .pred-arrow { transform: rotate(90deg); }
+
+  .pred-badge { font-family: 'Bebas Neue', sans-serif; font-size: 9px; letter-spacing: 0.12em; padding: 3px 8px; border-radius: 2px; flex-shrink: 0; }
+  .pred-badge.hit { background: rgba(34,197,94,0.08); color: #22c55e; border: 1px solid rgba(34,197,94,0.25); }
+  .pred-badge.pending { background: rgba(251,191,36,0.08); color: #fbbf24; border: 1px solid rgba(251,191,36,0.25); }
+
+  .pred-details { display: none; border-top: 1px solid #0f1923; padding: 16px 18px; }
+  .pred-card.open .pred-details { display: block; }
+
+  .pred-details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .pred-detail-item { }
+  .pred-detail-label { font-family: 'Bebas Neue', sans-serif; font-size: 9px; letter-spacing: 0.15em; color: #4b5563; margin-bottom: 3px; }
+  .pred-detail-val { font-family: 'Space Mono', monospace; font-size: 13px; color: #9ca3af; }
+
+  .pred-accuracy-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+  .pred-accuracy-label { font-family: 'Bebas Neue', sans-serif; font-size: 9px; letter-spacing: 0.15em; color: #6b7280; }
+  .pred-accuracy-pct { font-family: 'Space Mono', monospace; font-size: 9px; color: #22c55e; }
+  .pred-track { background: #060a0f; border-radius: 2px; height: 4px; margin-bottom: 14px; }
+  .pred-fill { height: 100%; border-radius: 2px; background: linear-gradient(90deg, #22c55e, #16a34a); }
+
+  .pred-inputs-box { background: #080d14; border-radius: 4px; padding: 12px 14px; }
+  .pred-inputs-title { font-family: 'Bebas Neue', sans-serif; font-size: 9px; letter-spacing: 0.18em; color: #374151; margin-bottom: 10px; }
+  .pred-inputs-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .pred-input-label { font-family: 'Bebas Neue', sans-serif; font-size: 8px; letter-spacing: 0.12em; color: #4b5563; margin-bottom: 2px; }
+  .pred-input-val { font-family: 'Space Mono', monospace; font-size: 11px; color: #6b7280; }
+
+  .in-range-tag { display: inline-block; font-family: 'Bebas Neue', sans-serif; font-size: 8px; letter-spacing: 0.12em; background: rgba(34,197,94,0.08); color: #22c55e; border: 1px solid rgba(34,197,94,0.2); padding: 1px 6px; border-radius: 2px; margin-left: 6px; vertical-align: middle; }
+</style>
+
+<div class="predictions-section">
+  <div class="predictions-title-row">
+    <div class="green-bar"></div>
+    <div>
+      <div class="title-big">VERIFIED PREDICTIONS</div>
+      <div class="title-sub">OUR PROJECTIONS VS ACTUAL RESULTS</div>
+    </div>
+  </div>
+  <p class="predictions-desc">Real predictions made using this tool before chart results were announced. Click any row to see full breakdown.</p>
+
+  <!-- Bruno Mars -->
+  <div class="pred-card" id="pred-bruno">
+    <div class="pred-summary" onclick="togglePred('pred-bruno')">
+      <div class="pred-left">
+        <div class="pred-artist">BRUNO MARS <span class="pred-badge hit">✓ VERIFIED</span></div>
+        <div class="pred-album">The Romantic · Feb 27, 2026</div>
+      </div>
+      <div class="pred-numbers">
+        <div class="pred-num-block" style="padding-right:24px;">
+          <div class="pred-num-label">OUR PREDICTION</div>
+          <div class="pred-num-val amber">164.8K</div>
+        </div>
+        <div style="width:1px;height:32px;background:#1f2937;flex-shrink:0;"></div>
+        <div class="pred-num-block" style="padding-left:24px;">
+          <div class="pred-num-label">FINAL ACTIVITY</div>
+          <div class="pred-num-val green">186K</div>
+        </div>
+      </div>
+      <span class="pred-arrow">›</span>
+    </div>
+    <div class="pred-details">
+      <div class="pred-accuracy-row">
+        <span class="pred-accuracy-label">ACCURACY</span>
+        <span class="pred-accuracy-pct">88.6% ✓</span>
+      </div>
+      <div class="pred-track"><div class="pred-fill" style="width:88.6%"></div></div>
+
+      <div class="pred-details-grid">
+        <div class="pred-detail-item">
+          <div class="pred-detail-label">PROJECTED RANGE</div>
+          <div class="pred-detail-val">143.4K – 186.2K <span class="in-range-tag">IN RANGE</span></div>
+        </div>
+        <div class="pred-detail-item">
+          <div class="pred-detail-label">CHART POSITION</div>
+          <div class="pred-detail-val" style="color:#22c55e">#1 Billboard 200</div>
+        </div>
+        <div class="pred-detail-item">
+          <div class="pred-detail-label">OUR PREDICTION — PURE SALES</div>
+          <div class="pred-detail-val">102.5K</div>
+        </div>
+        <div class="pred-detail-item">
+          <div class="pred-detail-label">FINAL ACTIVITY — PURE SALES</div>
+          <div class="pred-detail-val">93.5K</div>
+        </div>
+        <div class="pred-detail-item">
+          <div class="pred-detail-label">OUR PREDICTION — SEA UNITS</div>
+          <div class="pred-detail-val">62.3K</div>
+        </div>
+        <div class="pred-detail-item">
+          <div class="pred-detail-label">FINAL ACTIVITY — SEA UNITS</div>
+          <div class="pred-detail-val">90.5K</div>
+        </div>
+      </div>
+
+      <div class="pred-inputs-box">
+        <div class="pred-inputs-title">INPUTS USED</div>
+        <div class="pred-inputs-grid">
+          <div><div class="pred-input-label">DAY 1 (FEB 27)</div><div class="pred-input-val">11.52M</div></div>
+          <div><div class="pred-input-label">DAY 2 (FEB 28)</div><div class="pred-input-val">9.36M</div></div>
+          <div><div class="pred-input-label">DAY 3 (MAR 01)</div><div class="pred-input-val">7.09M</div></div>
+          <div><div class="pred-input-label">24K MAGIC SPS</div><div class="pred-input-val">231K</div></div>
+          <div><div class="pred-input-label">24K MAGIC PURE</div><div class="pred-input-val">194K</div></div>
+          <div><div class="pred-input-label">SILK SONIC SPS</div><div class="pred-input-val">104K</div></div>
+          <div><div class="pred-input-label">SILK SONIC PURE</div><div class="pred-input-val">42K</div></div>
+          <div><div class="pred-input-label">AVG PURE RATIO</div><div class="pred-input-val">62.2%</div></div>
+          <div><div class="pred-input-label">CURVE</div><div class="pred-input-val">STANDARD x1.68</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Harry Styles -->
+  <div class="pred-card" id="pred-harry">
+    <div class="pred-summary" onclick="togglePred('pred-harry')">
+      <div class="pred-left">
+        <div class="pred-artist">HARRY STYLES <span class="pred-badge pending">⏳ PENDING</span></div>
+        <div class="pred-album">Kiss All the Time. Disco, Occasionally. · Mar 6, 2026</div>
+      </div>
+      <div class="pred-numbers">
+        <div class="pred-num-block" style="padding-right:24px;">
+          <div class="pred-num-label">OUR PREDICTION</div>
+          <div class="pred-num-val amber">341.6K</div>
+        </div>
+        <div style="width:1px;height:32px;background:#1f2937;flex-shrink:0;"></div>
+        <div class="pred-num-block" style="padding-left:24px;">
+          <div class="pred-num-label">FINAL ACTIVITY</div>
+          <div class="pred-num-val" style="color:#374151;">TBD</div>
+        </div>
+      </div>
+      <span class="pred-arrow">›</span>
+    </div>
+    <div class="pred-details">
+      <div class="pred-accuracy-row">
+        <span class="pred-accuracy-label">HITSDD PROJECTION</span>
+        <span class="pred-accuracy-pct" style="color:#6b7280;">445K SPS · 290K PURE</span>
+      </div>
+      <div class="pred-track"><div class="pred-fill" style="width:0%;background:#1f2937;"></div></div>
+
+      <div class="pred-details-grid">
+        <div class="pred-detail-item">
+          <div class="pred-detail-label">PROJECTED RANGE</div>
+          <div class="pred-detail-val">297.2K – 386.0K</div>
+        </div>
+        <div class="pred-detail-item">
+          <div class="pred-detail-label">CHART POSITION</div>
+          <div class="pred-detail-val" style="color:#374151;">AWAITING RESULTS</div>
+        </div>
+        <div class="pred-detail-item">
+          <div class="pred-detail-label">OUR PREDICTION — PURE SALES</div>
+          <div class="pred-detail-val">248.5K</div>
+        </div>
+        <div class="pred-detail-item">
+          <div class="pred-detail-label">FINAL ACTIVITY — PURE SALES</div>
+          <div class="pred-detail-val" style="color:#374151;">TBD</div>
+        </div>
+        <div class="pred-detail-item">
+          <div class="pred-detail-label">OUR PREDICTION — SEA UNITS</div>
+          <div class="pred-detail-val">93.1K</div>
+        </div>
+        <div class="pred-detail-item">
+          <div class="pred-detail-label">FINAL ACTIVITY — SEA UNITS</div>
+          <div class="pred-detail-val" style="color:#374151;">TBD</div>
+        </div>
+      </div>
+
+      <div class="pred-inputs-box">
+        <div class="pred-inputs-title">INPUTS USED</div>
+        <div class="pred-inputs-grid">
+          <div><div class="pred-input-label">DAY 1 (MAR 6)</div><div class="pred-input-val">46.80M</div></div>
+          <div><div class="pred-input-label">FULL WEEK (x1.5)</div><div class="pred-input-val">70.20M</div></div>
+          <div><div class="pred-input-label">ELIGIBLE STREAMS</div><div class="pred-input-val">108.00M</div></div>
+          <div><div class="pred-input-label">HARRY'S HOUSE SPS</div><div class="pred-input-val">521.5K</div></div>
+          <div><div class="pred-input-label">HARRY'S HOUSE PURE</div><div class="pred-input-val">330K</div></div>
+          <div><div class="pred-input-label">FINE LINE SPS</div><div class="pred-input-val">478K</div></div>
+          <div><div class="pred-input-label">FINE LINE PURE</div><div class="pred-input-val">393K</div></div>
+          <div><div class="pred-input-label">AVG PURE RATIO</div><div class="pred-input-val">72.7%</div></div>
+          <div><div class="pred-input-label">CURVE</div><div class="pred-input-val">FRONT-LOADED x1.5</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- More coming -->
+  <div style="background:#080d14;border:1px dashed #1a2030;border-radius:6px;padding:18px;text-align:center;margin-top:4px;">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:0.18em;color:#374151;margin-bottom:5px;">MORE PREDICTIONS COMING</div>
+    <div style="font-family:'Space Mono',monospace;font-size:10px;color:#4b5563;">J. Cole · Charli XCX · Don Toliver · BLACKPINK</div>
+  </div>
+</div>
+
+<script>
+  function togglePred(id) {
+    document.getElementById(id).classList.toggle('open');
+  }
+</script>
+
 </body>
 </html>
