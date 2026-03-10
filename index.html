@@ -1,0 +1,334 @@
+
+import { useState, useMemo } from "react";
+
+const SPOTIFY_US_SHARE = 0.65;
+const PAID_TIER_SHARE  = 0.77;
+const FREE_TIER_SHARE  = 0.23;
+const PAID_PER_UNIT    = 1000;
+const FREE_PER_UNIT    = 2500;
+
+const RELEASE_TYPES = {
+  frontloaded: { label: "FRONT-LOADED", weekMult: 1.50 },
+  standard:    { label: "STANDARD",     weekMult: 1.68 },
+  slowburn:    { label: "SLOW-BURN",    weekMult: 1.90 },
+};
+
+function detectType(d1, d2, d3) {
+  if (!d1 || !d2) return "standard";
+  if (d3 && d3 >= d2 * 0.97) return "slowburn";
+  const r = d2 / d1;
+  if (r < 0.72) return "frontloaded";
+  if (r > 0.88) return "slowburn";
+  return "standard";
+}
+
+function fmt(n) {
+  if (n >= 1000000) return (n / 1000000).toFixed(2) + "M";
+  if (n >= 1000)    return (n / 1000).toFixed(1) + "K";
+  return String(Math.round(n));
+}
+
+function fmtPct(p) { return (p * 100).toFixed(1) + "%"; }
+
+function Bar({ label, value, max, color, sublabel }) {
+  const pct = Math.min((value / max) * 100, 100);
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
+        <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 12, letterSpacing: "0.08em", color: "#6b7280" }}>{label}</span>
+        <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 13, color: "#e5e7eb", fontWeight: 700 }}>{sublabel}</span>
+      </div>
+      <div style={{ background: "#1a2030", borderRadius: 2, height: 6 }}>
+        <div style={{ width: pct + "%", height: "100%", background: color, borderRadius: 2, transition: "width 0.7s cubic-bezier(.4,0,.2,1)" }} />
+      </div>
+    </div>
+  );
+}
+
+function StatBox({ label, value, sub, accent }) {
+  return (
+    <div style={{ background: "#0d1117", border: "1px solid " + accent + "28", borderTop: "2px solid " + accent, borderRadius: 3, padding: "16px 14px", flex: 1, minWidth: 120 }}>
+      <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 10, letterSpacing: "0.18em", color: "#9ca3af", marginBottom: 8 }}>{label}</div>
+      <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 22, fontWeight: 700, color: "#f9fafb", lineHeight: 1 }}>{value}</div>
+      {sub && <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: accent, marginTop: 5 }}>{sub}</div>}
+    </div>
+  );
+}
+
+function DayInput({ label, value, onChange, autoVal }) {
+  const [focused, setFocused] = useState(false);
+  const isAuto = value === "" && autoVal !== null;
+  const placeholder = isAuto ? autoVal.toFixed(1) : "0";
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
+        <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 11, letterSpacing: "0.15em", color: "#9ca3af" }}>{label}</span>
+        {isAuto && <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 9, color: "#6b7280", letterSpacing: "0.05em" }}>AUTO</span>}
+      </div>
+      <div style={{ display: "flex", alignItems: "center", background: "#0d1117", border: "1px solid " + (focused ? "#22c55e" : isAuto ? "#22c55e22" : "#1f2937"), borderRadius: 4, transition: "border-color 0.15s" }}>
+        <input
+          type="number" min="0" step="0.1" placeholder={placeholder}
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontFamily: "'Space Mono',monospace", fontSize: 20, padding: "12px 14px", width: "100%", color: "#9ca3af", cursor: "text" }}
+        />
+        <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 15, color: "#6b7280", paddingRight: 12, userSelect: "none" }}>M</span>
+      </div>
+    </div>
+  );
+}
+
+function NumInput({ label, value, onChange, placeholder }) {
+  const [focused, setFocused] = useState(false);
+  const handleChange = (e) => {
+    const digits = e.target.value.replace(/[^0-9]/g, "");
+    onChange(digits);
+  };
+  return (
+    <div>
+      <div style={{ marginBottom: 6 }}>
+        <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 11, letterSpacing: "0.15em", color: "#9ca3af" }}>{label}</span>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", background: "#0d1117", border: "1px solid " + (focused ? "#f59e0b" : "#1f2937"), borderRadius: 4, transition: "border-color 0.15s" }}>
+        <input
+          type="text" inputMode="numeric"
+          placeholder={placeholder || "0"}
+          value={value ? parseInt(value, 10).toLocaleString("en-US") : ""}
+          onChange={handleChange}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          style={{ flex: 1, background: "transparent", border: "none", outline: "none", color: "#9ca3af", fontFamily: "'Space Mono',monospace", fontSize: 18, padding: "11px 14px", width: "100%" }}
+        />
+      </div>
+    </div>
+  );
+}
+
+// Album row: SPS + Pure + auto % 
+function AlbumRow({ albumLabel, sps, pure, onSpsChange, onPureChange }) {
+  const pct = sps && pure ? pure / sps : null;
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 10, letterSpacing: "0.15em", color: "#6b7280", marginBottom: 8 }}>{albumLabel}</div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 80px", gap: 10 }}>
+        <NumInput label="TOTAL SPS" value={sps} onChange={onSpsChange} placeholder="e.g. 400,000" />
+        <NumInput label="PURE SALES" value={pure} onChange={onPureChange} placeholder="e.g. 80,000" />
+        <div>
+          <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 11, letterSpacing: "0.15em", color: "#9ca3af", marginBottom: 6 }}>PURE %</div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", background: "#080f0a", border: "1px solid " + (pct !== null ? "#f59e0b44" : "#1f2937"), borderRadius: 4, padding: "11px 10px", boxSizing: "border-box", height: 50 }}>
+            <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 16, color: pct !== null ? "#f59e0b" : "#374151", fontWeight: 700 }}>
+              {pct !== null ? fmtPct(pct) : "—"}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function BillboardPredictor() {
+  const [day1, setDay1] = useState("");
+  const [day2, setDay2] = useState("");
+  const [day3, setDay3] = useState("");
+
+  // Two albums
+  const [a1Sps,  setA1Sps]  = useState("");
+  const [a1Pure, setA1Pure] = useState("");
+  const [a2Sps,  setA2Sps]  = useState("");
+  const [a2Pure, setA2Pure] = useState("");
+
+  const [result, setResult]   = useState(null);
+  const [animated, setAnimated] = useState(false);
+
+  const d1 = parseFloat(day1) || 0;
+  const d2 = parseFloat(day2) || 0;
+
+  const d3Auto = useMemo(() => {
+    if (!d1 || !d2) return null;
+    const absoluteDrop = d1 - d2;
+    const d3 = d2 - (absoluteDrop * 0.5);
+    return Math.min(Math.max(d3, d2 * 0.40), d2);
+  }, [d1, d2]);
+
+  const d3 = day3 !== "" ? (parseFloat(day3) || 0) : (d3Auto !== null ? d3Auto : 0);
+
+  const a1s = parseFloat(a1Sps)  || 0;
+  const a1p = parseFloat(a1Pure) || 0;
+  const a2s = parseFloat(a2Sps)  || 0;
+  const a2p = parseFloat(a2Pure) || 0;
+
+  const hasA1 = a1s > 0 && a1p > 0;
+  const hasA2 = a2s > 0 && a2p > 0;
+
+  // Average pure sales pct across available albums
+  const pureSalesPct = useMemo(() => {
+    if (hasA1 && hasA2) return ((a1p / a1s) + (a2p / a2s)) / 2;
+    if (hasA1) return a1p / a1s;
+    if (hasA2) return a2p / a2s;
+    return null;
+  }, [hasA1, hasA2, a1s, a1p, a2s, a2p]);
+
+  const hasPrevious = pureSalesPct !== null;
+  const hasInput    = d1 > 0 || d2 > 0;
+
+  const detectedType = useMemo(() => detectType(d1, d2, d3), [d1, d2, d3]);
+  const TYPE_COLORS  = { frontloaded: "#f87171", standard: "#22c55e", slowburn: "#60a5fa" };
+
+  const calculate = () => {
+    if (!hasInput) return;
+    const sp3    = (d1 + d2 + d3) * 1000000;
+    const rType  = detectType(d1, d2, d3);
+    const rCfg   = RELEASE_TYPES[rType];
+    const spWeek = sp3 * rCfg.weekMult;
+    const total  = spWeek / SPOTIFY_US_SHARE;
+    const paid   = total * PAID_TIER_SHARE;
+    const free   = total * FREE_TIER_SHARE;
+    const sea    = paid / PAID_PER_UNIT + free / FREE_PER_UNIT;
+    const salesPct   = hasPrevious ? pureSalesPct : 0;
+    const allUnits   = salesPct > 0 ? sea / (1 - salesPct) : sea;
+    const salesUnits = Math.round(allUnits * salesPct);
+    const mid        = Math.round(sea + salesUnits);
+    setResult({
+      rType, rCfg, sp3, spWeek, total, paid, free,
+      seaUnits: Math.round(sea), salesUnits, salesPct, hasPrevious,
+      albumsUsed: (hasA1 ? 1 : 0) + (hasA2 ? 1 : 0),
+      mid, low: Math.round(mid * 0.87), high: Math.round(mid * 1.13),
+    });
+    setAnimated(false);
+    setTimeout(() => setAnimated(true), 40);
+  };
+
+  return (
+    <>
+      <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+      <style>{`input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none}input[type=number]{-moz-appearance:textfield}`}</style>
+      <div style={{ minHeight: "100vh", background: "#060a0f", color: "#f9fafb", padding: "40px 20px", fontFamily: "'Space Mono',monospace" }}>
+        <div style={{ maxWidth: 660, margin: "0 auto" }}>
+
+          {/* Header */}
+          <div style={{ marginBottom: 36, paddingBottom: 26, borderBottom: "1px solid #0f1923" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
+              <div style={{ width: 3, height: 38, background: "#22c55e", borderRadius: 2, flexShrink: 0 }} />
+              <div>
+                <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 30, letterSpacing: "0.1em", lineHeight: 1 }}>BILLBOARD 200</div>
+                <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 13, letterSpacing: "0.22em", color: "#6b7280" }}>FIRST WEEK PROJECTION ENGINE</div>
+              </div>
+            </div>
+            <p style={{ fontSize: 11, color: "#9ca3af", lineHeight: 1.8, margin: 0 }}>
+              Enter Spotify US streams in millions for days 1-3. Day 3 auto-calculates from the decay curve. Enter up to 2 prior albums to average the pure sales ratio.
+            </p>
+          </div>
+
+          {/* Stream inputs */}
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 15, letterSpacing: "0.15em", color: "#22c55e", marginBottom: 14 }}>SPOTIFY US DAILY STREAMS (MILLIONS)</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 6 }}>
+              <DayInput label="DAY 1" value={day1} onChange={setDay1} autoVal={null} />
+              <DayInput label="DAY 2" value={day2} onChange={setDay2} autoVal={null} />
+              <DayInput label="DAY 3" value={day3} onChange={setDay3} autoVal={d3Auto} />
+            </div>
+            {d3Auto !== null && day3 === "" && (
+              <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: "#6b7280", marginBottom: 14 }}>
+                Day 3 estimated from D1-D2 decay · type to override
+              </div>
+            )}
+
+            {/* Stream curve pill */}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 24, minHeight: 24, opacity: hasInput ? 1 : 0, transition: "opacity 0.3s" }}>
+              <div style={{ width: 6, height: 6, borderRadius: "50%", background: TYPE_COLORS[detectedType], flexShrink: 0 }} />
+              <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 12, letterSpacing: "0.15em", color: TYPE_COLORS[detectedType] }}>
+                STREAM CURVE: {RELEASE_TYPES[detectedType].label}
+              </span>
+              <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: "#9ca3af" }}>
+                x{RELEASE_TYPES[detectedType].weekMult} week mult
+              </span>
+            </div>
+
+            {/* Previous albums section */}
+            <div style={{ background: "#0d1117", border: "1px solid #0f1923", borderRadius: 4, padding: "18px 16px", marginBottom: 20 }}>
+              <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 15, letterSpacing: "0.12em", color: "#22c55e", marginBottom: 4 }}>LAST ALBUMS — PURE SALES CALIBRATION</div>
+              <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 10, color: "#9ca3af", marginBottom: 16, lineHeight: 1.7 }}>
+                Enter first week SPS and pure sales for up to 2 prior releases. Pure % is averaged across both to smooth outliers.
+              </div>
+
+              <AlbumRow
+                albumLabel="ALBUM 1 (MOST RECENT)"
+                sps={a1Sps} pure={a1Pure}
+                onSpsChange={setA1Sps} onPureChange={setA1Pure}
+              />
+              <AlbumRow
+                albumLabel="ALBUM 2"
+                sps={a2Sps} pure={a2Pure}
+                onSpsChange={setA2Sps} onPureChange={setA2Pure}
+              />
+
+              {/* Averaged ratio */}
+              <div style={{ marginTop: 8, paddingTop: 14, borderTop: "1px solid #1a2030", display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ width: 6, height: 6, borderRadius: "50%", background: hasPrevious ? "#f59e0b" : "#374151", flexShrink: 0 }} />
+                <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 12, letterSpacing: "0.12em", color: hasPrevious ? "#f59e0b" : "#374151" }}>
+                  {hasPrevious
+                    ? "AVG PURE RATIO: " + fmtPct(pureSalesPct) + (result && result.albumsUsed === 1 ? " (1 album)" : result && result.albumsUsed === 2 ? " (2 albums)" : "")
+                    : "NO PRIOR DATA — PURE SALES DEFAULTS TO 0"}
+                </span>
+              </div>
+            </div>
+
+            <button onClick={calculate} disabled={!hasInput}
+              style={{ width: "100%", padding: "15px", background: hasInput ? "#22c55e" : "#0f1923", color: hasInput ? "#060a0f" : "#374151", border: "none", borderRadius: 4, fontFamily: "'Bebas Neue',sans-serif", fontSize: 17, letterSpacing: "0.15em", cursor: hasInput ? "pointer" : "not-allowed", transition: "background 0.15s, color 0.15s" }}
+              onMouseEnter={e => { if (hasInput) e.target.style.background = "#16a34a"; }}
+              onMouseLeave={e => { if (hasInput) e.target.style.background = "#22c55e"; }}
+            >PROJECT FIRST WEEK</button>
+          </div>
+
+          {/* Results */}
+          {result && (
+            <div style={{ opacity: animated ? 1 : 0, transform: animated ? "translateY(0)" : "translateY(10px)", transition: "opacity 0.45s, transform 0.45s" }}>
+
+              <div style={{ background: "#070d1a", border: "1px solid #22c55e1a", borderLeft: "3px solid #22c55e", borderRadius: 4, padding: "24px 22px", marginBottom: 14 }}>
+                <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 11, letterSpacing: "0.2em", color: "#22c55e", marginBottom: 10 }}>
+                  PROJECTED FIRST WEEK · BILLBOARD 200 · {result.rCfg.label}
+                </div>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+                  <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 56, color: "#22c55e", letterSpacing: "0.03em", lineHeight: 1 }}>{fmt(result.mid)}</span>
+                  <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 13, color: "#9ca3af" }}>units (SPS)</span>
+                </div>
+                <div style={{ fontFamily: "'Space Mono',monospace", fontSize: 11, color: "#6b7280", marginTop: 8 }}>
+                  range · <span style={{ color: "#fbbf24" }}>{fmt(result.low)}</span>{" — "}<span style={{ color: "#f87171" }}>{fmt(result.high)}</span>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+                <StatBox label="SEA UNITS"  value={fmt(result.seaUnits)}   sub={fmt(result.total) + " eligible streams"} accent="#818cf8" />
+                <StatBox label="PURE SALES" value={fmt(result.salesUnits)} sub={result.hasPrevious ? fmtPct(result.salesPct) + " avg (" + result.albumsUsed + " album" + (result.albumsUsed > 1 ? "s" : "") + ")" : "no prior data"} accent="#f59e0b" />
+                <StatBox label="TOTAL SPS"  value={fmt(result.mid)}        sub={"+/- " + fmt(Math.round((result.high - result.low) / 2))} accent="#22c55e" />
+              </div>
+
+              <div style={{ background: "#0d1117", border: "1px solid #0f1923", borderRadius: 4, padding: "20px 18px", marginBottom: 14 }}>
+                <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 11, letterSpacing: "0.18em", color: "#22c55e", marginBottom: 16 }}>STREAM PROJECTION BREAKDOWN</div>
+                <Bar label="SPOTIFY US · DAYS 1-3"                                    value={result.sp3}    max={result.total} color="#1db954" sublabel={fmt(result.sp3)} />
+                <Bar label={"SPOTIFY US · FULL WEEK (x" + result.rCfg.weekMult + ")"} value={result.spWeek} max={result.total} color="#22c55e" sublabel={fmt(result.spWeek)} />
+                <Bar label="BILLBOARD-ELIGIBLE US STREAMS (NO YOUTUBE)"               value={result.total}  max={result.total} color="#818cf8" sublabel={fmt(result.total)} />
+                <Bar label="PAID TIER (77%)"                                           value={result.paid}   max={result.total} color="#60a5fa" sublabel={fmt(result.paid)} />
+                <Bar label="AD-SUPPORTED (23%)"                                        value={result.free}   max={result.total} color="#374151" sublabel={fmt(result.free)} />
+              </div>
+
+              <div style={{ background: "#0d1117", border: "1px solid #0f1923", borderRadius: 4, padding: "14px 16px" }}>
+                <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 10, letterSpacing: "0.2em", color: "#22c55e", marginBottom: 8 }}>MODEL ASSUMPTIONS</div>
+                <div style={{ fontSize: 10, color: "#9ca3af", lineHeight: 2 }}>
+                  · Billboard: 1,000 paid = 1 SEA · 2,500 free = 1 SEA (Jan 2026)<br />
+                  · Spotify US = 65% of Billboard-eligible streams (subscriber-weighted, YouTube excluded)<br />
+                  · 77% paid / 23% free blended split (Spotify ~67% paid, Apple/Tidal 100%, Amazon ~85%)<br />
+                  · Pure sales: {result.hasPrevious ? fmtPct(result.salesPct) + " avg pure ratio from " + result.albumsUsed + " prior album" + (result.albumsUsed > 1 ? "s" : "") : "0 — no prior album data entered"}<br />
+                  · Week mult x{result.rCfg.weekMult} · Curve: {result.rCfg.label} (auto-detected from D2/D1 decay)
+                </div>
+              </div>
+
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
